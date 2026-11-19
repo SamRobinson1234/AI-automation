@@ -75,8 +75,6 @@
       <div class="updated" id="updated"></div>
     </header>
 
-    <div id="error" class="message hidden" role="alert"></div>
-
     <section class="cards" aria-label="Sales summary">
       <article class="card"><div class="card-label">Total sales</div><div class="card-value" id="total-sales">—</div></article>
       <article class="card"><div class="card-label">Orders</div><div class="card-value" id="order-count">—</div></article>
@@ -92,6 +90,7 @@
         <div class="filters">
           <select id="region-filter" aria-label="Filter by region"><option value="">All regions</option></select>
           <select id="salesperson-filter" aria-label="Filter by salesperson"><option value="">All salespeople</option></select>
+          <select id="product-filter" aria-label="Filter by product"><option value="">All products</option></select>
           <select id="category-filter" aria-label="Filter by category"><option value="">All categories</option></select>
           <input type="search" id="search" placeholder="Search orders or products" aria-label="Search sales">
         </div>
@@ -116,7 +115,7 @@
       ["category", "Category"], ["quantity", "Qty"],
       ["unit_price", "Unit price"], ["sales_amount", "Sales"]
     ];
-    let sales = [];
+    let sales = __SALES_DATA__;
     let sortKey = "date";
     let sortDirection = -1;
     const money = amount => new Intl.NumberFormat("en-GB", {
@@ -136,11 +135,13 @@
     function currentSales() {
       const region = document.getElementById("region-filter").value;
       const salesperson = document.getElementById("salesperson-filter").value;
+      const product = document.getElementById("product-filter").value;
       const category = document.getElementById("category-filter").value;
       const query = document.getElementById("search").value.trim().toLowerCase();
       return sales.filter(row =>
         (!region || row.region === region) &&
         (!salesperson || row.salesperson === salesperson) &&
+        (!product || row.product === product) &&
         (!category || row.category === category) &&
         (!query || [row.order_id, row.product, row.region, row.salesperson, row.category]
           .some(value => value.toLowerCase().includes(query)))
@@ -234,24 +235,16 @@
       }
     }
 
-    async function start() {
+    function start() {
       setupHeaders();
-      try {
-        const response = await fetch("/api/sales", {cache: "no-store"});
-        if (!response.ok) throw new Error(`Server returned ${response.status}`);
-        sales = await response.json();
-        setOptions("region-filter", sales.map(row => row.region));
-        setOptions("salesperson-filter", sales.map(row => row.salesperson));
-        setOptions("category-filter", sales.map(row => row.category));
-        document.getElementById("updated").textContent = `${sales.length} cleaned sales records`;
-        document.querySelectorAll(".filters select, .filters input")
-          .forEach(element => element.addEventListener("input", render));
-        render();
-      } catch (error) {
-        const message = document.getElementById("error");
-        message.textContent = `Unable to load sales data. Run python main.py to create cleaned_sales.csv, then restart this app. (${error.message})`;
-        message.classList.remove("hidden");
-      }
+      setOptions("region-filter", sales.map(row => row.region));
+      setOptions("salesperson-filter", sales.map(row => row.salesperson));
+      setOptions("product-filter", sales.map(row => row.product));
+      setOptions("category-filter", sales.map(row => row.category));
+      document.getElementById("updated").textContent = `${sales.length} cleaned sales records`;
+      document.querySelectorAll(".filters select, .filters input")
+        .forEach(element => element.addEventListener("input", render));
+      render();
     }
     start();
   </script>
