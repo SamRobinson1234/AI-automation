@@ -1,0 +1,605 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Antarctic Weather | Penguin Forecast</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      color: #172b3b;
+      background: #dff3fb;
+      font-synthesis: none;
+    }
+    * { box-sizing: border-box; }
+    body { min-height: 100vh; margin: 0; background: #dff3fb; }
+    .shell { max-width: 1080px; margin: auto; padding: 38px 24px 56px; }
+    header { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; margin-bottom: 22px; }
+    .welcome { display: flex; align-items: center; gap: 16px; }
+    .mascot { display: grid; flex: 0 0 72px; width: 72px; height: 72px; place-items: center; border: 1px solid #c9e6f0; border-radius: 22px; background: #fff; font-size: 43px; box-shadow: 0 5px 16px #16324610; }
+    .eyebrow { color: #477d9a; font-size: 12px; font-weight: 750; letter-spacing: .14em; text-transform: uppercase; }
+    h1 { margin: 8px 0; font-size: clamp(29px, 5vw, 43px); letter-spacing: -.045em; }
+    .subtitle, .location, .fine-print { color: #667987; }
+    .subtitle { margin: 0; }
+    .location { text-align: right; font-size: 14px; line-height: 1.7; }
+    .cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
+    .card, .panel { border: 1px solid #dfe8ed; border-radius: 14px; background: #fff; box-shadow: 0 5px 20px #1632460a; }
+    .card { min-height: 114px; padding: 18px 20px; }
+    .label { color: #6a7c87; font-size: 13px; font-weight: 600; }
+    .value { margin-top: 9px; font-size: 27px; font-weight: 750; letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
+    .message { margin-bottom: 17px; padding: 15px 18px; border-radius: 12px; background: #e6f2f7; color: #264b5d; line-height: 1.55; }
+    .message.cold { background: #e9f1fb; color: #294c70; }
+    .message.warm { background: #fff2df; color: #75501c; }
+    .message.neutral { background: #edf2f2; color: #455b5d; }
+    .message.error { background: #fff0ed; color: #813d32; }
+    .recommendation { display: grid; grid-template-columns: 170px 1fr; align-items: center; gap: 20px; margin: 18px 0; }
+    .recommendation h2 { margin: 0 0 9px; font-size: 16px; }
+    .recommendation p { margin: 0; }
+    .vibe-art { display: grid; min-height: 142px; place-items: center; border-radius: 12px; background: #e8f6fb; }
+    .vibe-art svg { display: block; width: 150px; height: 130px; }
+    .notice { margin: 0 0 18px; color: #657985; font-size: 12px; line-height: 1.5; }
+    .panel { overflow: hidden; }
+    .panel-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 17px 19px; border-bottom: 1px solid #e8eef1; }
+    h2 { margin: 0; font-size: 16px; }
+    #refresh-status { color: #73838d; font-size: 12px; }
+    .picker { display: flex; flex-wrap: wrap; gap: 14px; padding: 18px 19px; }
+    .field { display: grid; gap: 7px; min-width: 190px; }
+    .field label { color: #607581; font-size: 12px; font-weight: 650; }
+    .field select { min-width: 190px; border: 1px solid #d5e0e6; border-radius: 8px; padding: 10px 12px; color: #172b3b; background: #fff; font: inherit; }
+    .field select:focus { outline: 3px solid #70a7c533; border-color: #568eae; }
+    .journey { margin-top: 18px; }
+    .journey-fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; padding: 18px 19px; }
+    .journey-fields .field { min-width: 0; }
+    .journey-fields input { min-width: 0; width: 100%; border: 1px solid #d5e0e6; border-radius: 8px; padding: 10px 12px; color: #172b3b; background: #fff; font: inherit; }
+    .journey-fields input:focus { outline: 3px solid #70a7c533; border-color: #568eae; }
+    .journey-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 15px; padding: 0 19px 16px; color: #607581; font-size: 13px; }
+    .primary-button { border: 0; border-radius: 8px; padding: 10px 15px; color: white; background: #347b9c; font: inherit; font-weight: 650; cursor: pointer; }
+    .primary-button:hover { background: #286783; }
+    .journey-error { color: #813d32; }
+    .journey-summary { padding: 0 19px 15px; font-weight: 700; }
+    .journey-table-wrap { max-height: 55vh; overflow: auto; }
+    .journey-table { width: 100%; border-collapse: collapse; text-align: left; }
+    .journey-table th, .journey-table td { padding: 10px 14px; border-top: 1px solid #edf1f3; font-size: 13px; }
+    .journey-table th { position: sticky; top: 0; color: #687b86; background: #f7fafb; font-size: 11px; letter-spacing: .055em; text-transform: uppercase; }
+    .selected-time { padding: 0 19px 18px; color: #667987; font-size: 13px; }
+    .fine-print { margin-top: 13px; font-size: 12px; }
+    @media (max-width: 620px) {
+      .shell { padding: 26px 14px 40px; }
+      header { align-items: flex-start; flex-direction: column; }
+      .welcome { align-items: flex-start; gap: 12px; }
+      .mascot { flex-basis: 58px; width: 58px; height: 58px; border-radius: 18px; font-size: 35px; }
+      .location { text-align: left; }
+      .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+      .card { min-height: 0; padding: 14px 16px; }
+      .value { margin-top: 5px; font-size: 23px; }
+      .recommendation { grid-template-columns: 1fr; gap: 12px; }
+      .vibe-art { min-height: 125px; }
+      .picker { flex-direction: column; }
+      .field, .field select { width: 100%; }
+      .journey-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 15px; gap: 11px; }
+      .journey-meta { padding: 0 15px 15px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div class="welcome">
+        <div class="mascot" role="img" aria-label="Penguin mascot">🐧</div>
+        <div>
+          <div class="eyebrow">Antarctica · travel forecast</div>
+          <h1>Welcome Antarctic traveller!</h1>
+          <p class="subtitle">Please select your time and date of travel to see the forecast and penguin advice.</p>
+        </div>
+      </div>
+      <div class="location">
+        <strong id="station-name">Choose a region</strong><br>
+        <span id="region-name">Antarctica</span>
+      </div>
+    </header>
+
+    <section class="cards" aria-label="Forecast summary">
+      <article class="card"><div class="label">Selected temperature</div><div id="selected-temp" class="value">Choose a time</div></article>
+      <article class="card"><div class="label">Selected wind</div><div id="selected-wind" class="value">—</div></article>
+      <article class="card"><div class="label">Seven-day low</div><div id="low-temp" class="value">—</div></article>
+      <article class="card"><div class="label">Seven-day high</div><div id="high-temp" class="value">—</div></article>
+    </section>
+
+    <section class="panel" aria-labelledby="picker-heading">
+      <div class="panel-head">
+        <h2 id="picker-heading">Plan your Antarctic trip</h2>
+        <span id="refresh-status">Select a region to begin</span>
+      </div>
+      <div class="picker">
+        <div class="field">
+          <label for="region-select">Antarctic region</label>
+          <select id="region-select">
+            <option value="">Select start point</option>
+          </select>
+        </div>
+        <div class="field">
+          <label id="date-label" for="date-select">Date (local time)</label>
+          <select id="date-select" disabled></select>
+        </div>
+        <div class="field">
+          <label id="time-label" for="time-select">Hour (local time)</label>
+          <select id="time-select" disabled></select>
+        </div>
+      </div>
+      <div class="selected-time" id="selected-time">Select a date and hour to see the forecast.</div>
+    </section>
+
+    <section class="message neutral recommendation" aria-labelledby="local-vibes-heading">
+      <div id="vibe-art" class="vibe-art" role="img" aria-label="Penguin waiting for a forecast">
+        <svg viewBox="0 0 160 130" aria-hidden="true">
+          <circle cx="80" cy="27" r="13" fill="#f3c868"/>
+          <ellipse cx="80" cy="80" rx="31" ry="39" fill="#253b4c"/>
+          <ellipse cx="80" cy="86" rx="21" ry="28" fill="#fff"/>
+          <circle cx="70" cy="42" r="14" fill="#253b4c"/>
+          <circle cx="66" cy="41" r="2" fill="#fff"/>
+          <circle cx="76" cy="41" r="2" fill="#fff"/>
+          <path d="m70 48 10 0-5 7z" fill="#efa94f"/>
+          <path d="m56 111-13 6 14 2m48-8 13 6-14 2" fill="#efa94f"/>
+        </svg>
+      </div>
+      <div>
+        <h2 id="local-vibes-heading">Local vibes</h2>
+        <p id="local-advice" role="status">Choose a region, then select your travel date and time.</p>
+      </div>
+    </section>
+    <section class="panel journey" aria-labelledby="journey-heading">
+      <div class="panel-head">
+        <h2 id="journey-heading">Plan a penguin journey</h2>
+        <span>Distances in kilometres</span>
+      </div>
+      <div class="journey-fields">
+        <div class="field">
+          <label for="destination-select">Journey end point</label>
+          <select id="destination-select" disabled>
+            <option value="">Loading stations…</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="waddle-distance">Waddling distance (km)</label>
+          <input id="waddle-distance" type="number" min="0" step="0.1" value="0">
+        </div>
+        <div class="field">
+          <label for="waddle-speed">Waddling speed (km/h)</label>
+          <input id="waddle-speed" type="number" min="0.1" step="0.1" value="2.5">
+        </div>
+        <div class="field">
+          <label for="swim-distance">Swimming distance (km)</label>
+          <input id="swim-distance" type="number" min="0" step="0.1" value="0">
+        </div>
+        <div class="field">
+          <label for="swim-speed">Swimming speed (km/h)</label>
+          <input id="swim-speed" type="number" min="0.1" step="0.1" value="8">
+        </div>
+      </div>
+      <div class="journey-meta">
+        <span id="route-distance">Select a start and end point to calculate the straight-line distance.</span>
+        <button id="calculate-journey" class="primary-button" type="button">Calculate journey</button>
+        <span id="journey-error" class="journey-error" role="alert"></span>
+      </div>
+      <div id="journey-result" hidden>
+        <div id="journey-summary" class="journey-summary"></div>
+        <div class="journey-table-wrap">
+          <table class="journey-table">
+            <thead><tr><th>Journey hour</th><th>Journey stage</th><th>Forecast time at start</th><th>Temperature</th><th>Wind</th><th>Local vibes</th></tr></thead>
+            <tbody id="journey-hours"></tbody>
+          </table>
+        </div>
+        <div id="journey-forecast-note" class="selected-time"></div>
+      </div>
+    </section>
+    <p class="notice">Penguin advice is playful, not wildlife guidance. Penguins are adapted to their environment; please observe wild penguins from a respectful distance and do not try to dress or apply products to them.</p>
+    <p class="fine-print">Forecast provided by Open-Meteo. The rolling seven-day forecast refreshes hourly while this page is open.</p>
+  </main>
+  <script>
+    const dateFormat = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "UTC", weekday: "short", day: "numeric", month: "long", year: "numeric"
+    });
+    const numberFormat = new Intl.NumberFormat("en-GB", {maximumFractionDigits: 1});
+    const localAdviceElement = document.getElementById("local-advice");
+    const localAdviceCard = localAdviceElement.parentElement;
+    const vibeArt = document.getElementById("vibe-art");
+    const regionSelect = document.getElementById("region-select");
+    const dateSelect = document.getElementById("date-select");
+    const timeSelect = document.getElementById("time-select");
+    const destinationSelect = document.getElementById("destination-select");
+    const journeyResult = document.getElementById("journey-result");
+    const journeyError = document.getElementById("journey-error");
+    const journeyLocations = new Map();
+    let forecastHours = [];
+    let activeRegion = "";
+
+    function adviceFor(temperature, windSpeed) {
+      if (temperature < 0 && windSpeed > 10) {
+        return {text: "Initiate huddle!", kind: "cold"};
+      }
+      if (temperature > 0 && windSpeed > 10) {
+        return {
+          text: "Wear suncream; an umbrella would be a bad idea in this wind.",
+          kind: "warm"
+        };
+      }
+      if (temperature < 0) return {text: "Wear a coat!", kind: "cold"};
+      if (temperature > 0) return {text: "Hit the beach!", kind: "warm"};
+      return {text: "Exactly zero: stay cozy and keep an eye on the sky.", kind: "neutral"};
+    }
+
+    function illustrationFor(temperature, windSpeed) {
+      const penguin = '<ellipse cx="80" cy="82" rx="29" ry="37" fill="#253b4c"/><ellipse cx="80" cy="87" rx="19" ry="26" fill="#fff"/><circle cx="80" cy="43" r="14" fill="#253b4c"/><circle cx="76" cy="42" r="2" fill="#fff"/><circle cx="85" cy="42" r="2" fill="#fff"/><path d="m79 48 10 0-5 7z" fill="#efa94f"/><path d="m57 112-13 6 14 2m44-8 13 6-14 2" fill="#efa94f"/>';
+      let label;
+      let scene;
+
+      if (temperature < 0 && windSpeed > 10) {
+        label = "Penguins huddling together in strong wind";
+        scene = '<path d="M23 39h27m-20 13h30m58-19h24m-31 13h22" stroke="#77abc1" stroke-width="4" stroke-linecap="round"/><path d="M28 105h104" stroke="#a9d8e8" stroke-width="4" stroke-linecap="round"/><g transform="translate(-20 17) scale(.58)">' + penguin + '</g><g transform="translate(20 20) scale(.58)">' + penguin + '</g><g transform="translate(0 0)">' + penguin + '</g>';
+      } else if (temperature < 0) {
+        label = "Penguin wearing a warm coat in the snow";
+        scene = '<path d="M24 28l4 9 9 1-7 6 2 9-8-5-8 5 2-9-7-6 10-1zM132 28l3 7 7 1-5 5 1 7-6-4-6 4 2-7-5-5 7-1z" fill="#fff"/><path d="M43 116h74" stroke="#a9d8e8" stroke-width="4" stroke-linecap="round"/>' + penguin + '<path d="M52 68q28-16 56 0v34q-28 15-56 0z" fill="#4288b8" stroke="#356d94" stroke-width="3"/><path d="M80 60v49" stroke="#d7eff8" stroke-width="4"/><circle cx="80" cy="82" r="2" fill="#fff"/><circle cx="80" cy="95" r="2" fill="#fff"/>';
+      } else if (temperature > 0 && windSpeed > 10) {
+        label = "Penguin with suncream in strong wind, without an umbrella";
+        scene = '<circle cx="127" cy="28" r="13" fill="#f3c868"/><path d="M22 39h31m-24 13h37m43-25h30m-25 13h23m-37 11h34" stroke="#77abc1" stroke-width="4" stroke-linecap="round"/><path d="M52 94h-18m92-25h-17" stroke="#77abc1" stroke-width="3" stroke-linecap="round"/>' + penguin + '<rect x="107" y="77" width="22" height="31" rx="5" fill="#f3c868" stroke="#d29837" stroke-width="2"/><path d="M112 77v-5q0-5 6-5t6 5v5" fill="none" stroke="#d29837" stroke-width="3"/><path d="M110 88h16" stroke="#fff" stroke-width="4"/>';
+      } else if (temperature > 0) {
+        label = "Penguin relaxing at the beach";
+        scene = '<circle cx="124" cy="30" r="15" fill="#f3c868"/><path d="M18 105q16-10 32 0t32 0 32 0 32 0" fill="none" stroke="#68b7d1" stroke-width="5"/><path d="M26 116q16-10 32 0t32 0 32 0 32 0" fill="none" stroke="#91d0e1" stroke-width="4"/><path d="M35 105h90" stroke="#ecd29b" stroke-width="5" stroke-linecap="round"/>' + penguin + '<path d="M104 88q9-9 18 0v13h-18z" fill="#f17f68"/><path d="M104 94h18" stroke="#fff" stroke-width="2"/>';
+      } else {
+        label = "Penguin checking the temperature at zero degrees";
+        scene = '<path d="M31 34h18m-9-9v18m-7-16 14 14m0-14L33 41" stroke="#8abbd0" stroke-width="3" stroke-linecap="round"/><circle cx="126" cy="34" r="11" fill="#fff" stroke="#8abbd0" stroke-width="3"/><path d="M126 45v45" stroke="#d86b5c" stroke-width="5" stroke-linecap="round"/><rect x="119" y="41" width="14" height="56" rx="7" fill="#fff" stroke="#8abbd0" stroke-width="3"/><path d="M25 115h110" stroke="#a9d8e8" stroke-width="4" stroke-linecap="round"/>' + penguin;
+      }
+
+      return {
+        label,
+        svg: `<svg viewBox="0 0 160 130" aria-hidden="true">${scene}</svg>`
+      };
+    }
+
+    function updateIllustration(temperature, windSpeed) {
+      const illustration = illustrationFor(temperature, windSpeed);
+      vibeArt.setAttribute("aria-label", illustration.label);
+      vibeArt.innerHTML = illustration.svg;
+    }
+
+    function updateSelectedForecast() {
+      const selected = forecastHours.find(hour => hour.time === timeSelect.value);
+      if (!selected) return;
+
+      document.getElementById("selected-time").textContent =
+        `Forecast for ${selected.time.replace("T", " at ")} local time at ${activeRegion.station}.`;
+      if (!Number.isFinite(selected.temperature) || !Number.isFinite(selected.windSpeed)) {
+        document.getElementById("selected-temp").textContent =
+          Number.isFinite(selected.temperature) ? `${numberFormat.format(selected.temperature)} °C` : "Unavailable";
+        document.getElementById("selected-wind").textContent =
+          Number.isFinite(selected.windSpeed) ? `${numberFormat.format(selected.windSpeed)} mph` : "Unavailable";
+        localAdviceCard.className = "message neutral recommendation";
+        localAdviceElement.textContent = "Temperature or wind data is unavailable for this hour.";
+        vibeArt.setAttribute("aria-label", "Penguin illustration unavailable without weather data");
+        return;
+      }
+
+      document.getElementById("selected-temp").textContent =
+        `${numberFormat.format(selected.temperature)} °C`;
+      document.getElementById("selected-wind").textContent =
+        `${numberFormat.format(selected.windSpeed)} mph`;
+      const advice = adviceFor(selected.temperature, selected.windSpeed);
+      localAdviceCard.className = `message ${advice.kind} recommendation`;
+      localAdviceElement.textContent = advice.text;
+      updateIllustration(selected.temperature, selected.windSpeed);
+    }
+
+    function formatDuration(hours) {
+      const minutes = Math.round(hours * 60);
+      const wholeHours = Math.floor(minutes / 60);
+      const remainingMinutes = minutes % 60;
+      if (!wholeHours) return `${remainingMinutes} min`;
+      if (!remainingMinutes) return `${wholeHours} hr`;
+      return `${wholeHours} hr ${remainingMinutes} min`;
+    }
+
+    function haversineDistance(first, second) {
+      const radians = degrees => degrees * Math.PI / 180;
+      const latitudeDifference = radians(second.latitude - first.latitude);
+      const longitudeDifference = radians(second.longitude - first.longitude);
+      const value = Math.sin(latitudeDifference / 2) ** 2 +
+        Math.cos(radians(first.latitude)) * Math.cos(radians(second.latitude)) *
+        Math.sin(longitudeDifference / 2) ** 2;
+      return 6371 * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
+    }
+
+    function updateRouteDistance() {
+      const start = journeyLocations.get(regionSelect.value);
+      const end = journeyLocations.get(destinationSelect.value);
+      const routeText = document.getElementById("route-distance");
+      routeText.textContent = start && end
+        ? `Straight-line distance: ${numberFormat.format(haversineDistance(start, end))} km.`
+        : "Select a start and end point to calculate the straight-line distance.";
+    }
+
+    function appendCell(row, value) {
+      const cell = document.createElement("td");
+      cell.textContent = value;
+      row.append(cell);
+    }
+
+    function calculateJourney() {
+      journeyError.textContent = "";
+      journeyResult.hidden = true;
+
+      const start = journeyLocations.get(regionSelect.value);
+      const end = journeyLocations.get(destinationSelect.value);
+      if (!start || !end) {
+        journeyError.textContent = "Choose both a start and end station.";
+        return;
+      }
+      if (start === end) {
+        journeyError.textContent = "Choose different start and end stations.";
+        return;
+      }
+
+      const waddleDistance = Number(document.getElementById("waddle-distance").value);
+      const swimDistance = Number(document.getElementById("swim-distance").value);
+      const waddleSpeed = Number(document.getElementById("waddle-speed").value);
+      const swimSpeed = Number(document.getElementById("swim-speed").value);
+      if (![waddleDistance, swimDistance].every(value => Number.isFinite(value) && value >= 0) ||
+          ![waddleSpeed, swimSpeed].every(value => Number.isFinite(value) && value > 0)) {
+        journeyError.textContent = "Enter non-negative distances and speeds greater than zero.";
+        return;
+      }
+
+      const departureIndex = forecastHours.findIndex(hour => hour.time === timeSelect.value);
+      if (!activeRegion || departureIndex < 0) {
+        journeyError.textContent = "Load the start-station forecast and choose a departure date and hour first.";
+        return;
+      }
+
+      const waddleHours = waddleDistance / waddleSpeed;
+      const swimHours = swimDistance / swimSpeed;
+      const totalHours = waddleHours + swimHours;
+      if (totalHours <= 0) {
+        journeyError.textContent = "Enter a journey distance greater than zero.";
+        return;
+      }
+      const journeyHourCount = Math.ceil(totalHours);
+      const distance = haversineDistance(start, end);
+      const rows = document.getElementById("journey-hours");
+      rows.replaceChildren();
+
+      for (let index = 0; index < journeyHourCount; index += 1) {
+        const stage = index < waddleHours ? "Waddling" : "Swimming";
+        const forecast = forecastHours[departureIndex + index];
+        const row = document.createElement("tr");
+        appendCell(row, `Hour ${index + 1}`);
+        appendCell(row, stage);
+        if (forecast) {
+          appendCell(row, forecast.time.replace("T", " "));
+          appendCell(row, Number.isFinite(forecast.temperature)
+            ? `${numberFormat.format(forecast.temperature)} °C` : "Unavailable");
+          appendCell(row, Number.isFinite(forecast.windSpeed)
+            ? `${numberFormat.format(forecast.windSpeed)} mph` : "Unavailable");
+          const advice = Number.isFinite(forecast.temperature) && Number.isFinite(forecast.windSpeed)
+            ? adviceFor(forecast.temperature, forecast.windSpeed).text
+            : "Weather data unavailable.";
+          appendCell(row, advice);
+        } else {
+          appendCell(row, "Outside forecast window");
+          appendCell(row, "Unavailable");
+          appendCell(row, "Unavailable");
+          appendCell(row, "Forecast unavailable; no advice.");
+        }
+        rows.append(row);
+      }
+
+      const duration = formatDuration(totalHours);
+      document.getElementById("journey-summary").textContent =
+        `${start.station} to ${end.station}: ${numberFormat.format(waddleDistance + swimDistance)} km entered ` +
+        `(${numberFormat.format(waddleDistance)} km waddling, ${numberFormat.format(swimDistance)} km swimming), ` +
+        `estimated ${duration}. Straight-line station distance is ${numberFormat.format(distance)} km.`;
+      const covered = Math.max(0, Math.min(journeyHourCount, forecastHours.length - departureIndex));
+      document.getElementById("journey-forecast-note").textContent =
+        `Departure: ${timeSelect.value.replace("T", " ")} local time at ${start.station}. ` +
+        `Advice uses only the start station's forecast, not weather along the route. ` +
+        `${covered} of ${journeyHourCount} journey hours have forecast coverage; ` +
+        `${journeyHourCount - covered} are beyond the available seven-day forecast.`;
+      journeyResult.hidden = false;
+    }
+
+    async function loadLocations() {
+      try {
+        const response = await fetch("/api/locations", {cache: "no-store"});
+        if (!response.ok) throw new Error(`location service returned ${response.status}`);
+        const locations = await response.json();
+        if (!locations || typeof locations !== "object") {
+          throw new Error("location service returned invalid station data");
+        }
+
+        regionSelect.replaceChildren(new Option("Select start point", ""));
+        destinationSelect.replaceChildren(new Option("Select end point", ""));
+        for (const [key, location] of Object.entries(locations)) {
+          if (!location || typeof location.name !== "string" ||
+              typeof location.station !== "string" ||
+              !Number.isFinite(location.latitude) || !Number.isFinite(location.longitude)) {
+            throw new Error("location service returned invalid station data");
+          }
+          journeyLocations.set(key, location);
+          regionSelect.append(new Option(`${location.name} — ${location.station}`, key));
+          destinationSelect.append(new Option(`${location.name} — ${location.station}`, key));
+        }
+        destinationSelect.disabled = journeyLocations.size < 2;
+      } catch (error) {
+        destinationSelect.replaceChildren(new Option("Stations unavailable", ""));
+        journeyError.textContent = `Could not load journey stations: ${error.message}.`;
+      }
+    }
+
+    function updateTimeOptions(preferredTime) {
+      const date = dateSelect.value;
+      const matchingHours = forecastHours.filter(hour => hour.time.slice(0, 10) === date);
+      timeSelect.replaceChildren();
+      const placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = "Select an hour";
+      timeSelect.append(placeholder);
+      for (const hour of matchingHours) {
+        const option = document.createElement("option");
+        option.value = hour.time;
+        option.textContent = `${hour.time.slice(11, 16)} local time`;
+        timeSelect.append(option);
+      }
+      timeSelect.disabled = matchingHours.length === 0;
+
+      const preferredHour = matchingHours.find(hour => hour.time === preferredTime);
+      if (preferredHour) {
+        timeSelect.value = preferredHour.time;
+      } else if (matchingHours.length) {
+        timeSelect.selectedIndex = 0;
+      }
+      updateSelectedForecast();
+    }
+
+    function updateDateOptions(preferredTime) {
+      const preferredDate = preferredTime?.slice(0, 10);
+      const dates = [...new Set(forecastHours.map(hour => hour.time.slice(0, 10)))];
+      dateSelect.replaceChildren();
+      const placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = "Select a date";
+      dateSelect.append(placeholder);
+      for (const date of dates) {
+        const option = document.createElement("option");
+        option.value = date;
+        option.textContent = dateFormat.format(new Date(`${date}T12:00:00Z`));
+        dateSelect.append(option);
+      }
+      dateSelect.disabled = dates.length === 0;
+      if (dates.includes(preferredDate)) {
+        dateSelect.value = preferredDate;
+      } else if (dates.length) {
+        dateSelect.value = "";
+      }
+      updateTimeOptions(preferredTime);
+    }
+
+    function showError(error) {
+      localAdviceCard.className = "message error recommendation";
+      localAdviceElement.textContent = `Could not load the forecast: ${error.message}. Check your internet connection and try again.`;
+      document.getElementById("refresh-status").textContent = "Forecast unavailable";
+    }
+
+    async function refreshForecast() {
+      const requestedRegion = regionSelect.value;
+      if (!requestedRegion) return;
+      try {
+        const response = await fetch(
+          `/api/forecast?region=${encodeURIComponent(requestedRegion)}`,
+          {cache: "no-store"}
+        );
+        if (!response.ok) throw new Error(`weather service returned ${response.status}`);
+        const data = await response.json();
+        if (regionSelect.value !== requestedRegion) return;
+        if (!data.hourly || !Array.isArray(data.hourly.time) ||
+            !Array.isArray(data.hourly.temperature_2m) ||
+            !Array.isArray(data.hourly.wind_speed_10m) ||
+            data.hourly.time.length !== data.hourly.temperature_2m.length ||
+            data.hourly.time.length !== data.hourly.wind_speed_10m.length) {
+          throw new Error("weather service returned incomplete hourly data");
+        }
+
+        const now = new Date(Date.now() + data.utc_offset_seconds * 1000);
+        const currentStationHour = [
+          now.getUTCFullYear(),
+          String(now.getUTCMonth() + 1).padStart(2, "0"),
+          String(now.getUTCDate()).padStart(2, "0")
+        ].join("-") + `T${String(now.getUTCHours()).padStart(2, "0")}:00`;
+        const start = data.hourly.time.findIndex(time => time >= currentStationHour);
+        if (start < 0 || data.hourly.time.length - start < 168) {
+          throw new Error("weather service did not provide the full seven-day window");
+        }
+
+        const previousSelection = timeSelect.value;
+        forecastHours = data.hourly.time.slice(start, start + 168).map((time, index) => ({
+          time,
+          temperature: data.hourly.temperature_2m[start + index],
+          windSpeed: data.hourly.wind_speed_10m[start + index]
+        }));
+        const available = forecastHours.filter(row => Number.isFinite(row.temperature));
+        const availableConditions = forecastHours.filter(row =>
+          Number.isFinite(row.temperature) && Number.isFinite(row.windSpeed)
+        );
+        if (!available.length || !availableConditions.length) {
+          throw new Error("forecast contains no valid temperature and wind data");
+        }
+
+        document.getElementById("low-temp").textContent =
+          `${numberFormat.format(Math.min(...available.map(row => row.temperature)))} °C`;
+        document.getElementById("high-temp").textContent =
+          `${numberFormat.format(Math.max(...available.map(row => row.temperature)))} °C`;
+        activeRegion = data.location;
+        document.getElementById("station-name").textContent = activeRegion.station;
+        document.getElementById("region-name").textContent = activeRegion.name;
+        document.getElementById("date-label").textContent =
+          `Date (${activeRegion.name} local time)`;
+        document.getElementById("time-label").textContent =
+          `Hour (${activeRegion.name} local time)`;
+        updateDateOptions(previousSelection);
+        document.getElementById("refresh-status").textContent =
+          `Forecast updated ${new Date().toLocaleTimeString()}`;
+      } catch (error) {
+        if (regionSelect.value === requestedRegion) showError(error);
+      }
+    }
+
+    regionSelect.addEventListener("change", () => {
+      activeRegion = "";
+      forecastHours = [];
+      dateSelect.replaceChildren();
+      timeSelect.replaceChildren();
+      dateSelect.disabled = true;
+      timeSelect.disabled = true;
+      document.getElementById("selected-temp").textContent = "Choose a time";
+      document.getElementById("selected-wind").textContent = "—";
+      document.getElementById("low-temp").textContent = "—";
+      document.getElementById("high-temp").textContent = "—";
+      document.getElementById("selected-time").textContent = "Select a date and hour to see the forecast.";
+      if (!regionSelect.value) {
+        document.getElementById("station-name").textContent = "Choose a region";
+        document.getElementById("region-name").textContent = "Antarctica";
+        document.getElementById("refresh-status").textContent = "Waiting for region";
+        localAdviceCard.className = "message neutral recommendation";
+        localAdviceElement.textContent = "Choose a region, then select your travel date and time.";
+        updateIllustration(0, 0);
+        return;
+      }
+      document.getElementById("date-label").textContent =
+        `Date (${regionSelect.options[regionSelect.selectedIndex].text} local time)`;
+      document.getElementById("time-label").textContent =
+        `Hour (${regionSelect.options[regionSelect.selectedIndex].text} local time)`;
+      localAdviceCard.className = "message neutral recommendation";
+      localAdviceElement.textContent = "Loading the forecast for your selected region…";
+      updateIllustration(0, 0);
+      document.getElementById("refresh-status").textContent = "Loading forecast…";
+      refreshForecast();
+    });
+    dateSelect.addEventListener("change", () => {
+      updateTimeOptions();
+      timeSelect.value = "";
+      document.getElementById("selected-temp").textContent = "Choose a time";
+      document.getElementById("selected-wind").textContent = "—";
+      localAdviceCard.className = "message neutral recommendation";
+      localAdviceElement.textContent = "Now select your travel hour.";
+      updateIllustration(0, 0);
+      document.getElementById("selected-time").textContent = "Select an hour to see conditions for this date.";
+    });
+    timeSelect.addEventListener("change", updateSelectedForecast);
+    destinationSelect.addEventListener("change", updateRouteDistance);
+    regionSelect.addEventListener("change", updateRouteDistance);
+    document.getElementById("calculate-journey").addEventListener("click", calculateJourney);
+    loadLocations();
+    window.setInterval(() => {
+      if (regionSelect.value) refreshForecast();
+    }, 60 * 60 * 1000);
+  </script>
+</body>
+</html>
