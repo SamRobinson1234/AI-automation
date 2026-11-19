@@ -10,10 +10,16 @@ from urllib.parse import parse_qs, urlencode, urlsplit
 
 
 ROOT = Path(__file__).resolve().parent
-PAGE = ROOT / "dashboard.html"
 HOST = "127.0.0.1"
 PORT = 8765
 FORECAST_CACHE_SECONDS = 55 * 60
+OPEN_METEO_FORECAST_DAYS = 8
+REQUEST_TIMEOUT_SECONDS = 20
+STATIC_FILES = {
+    "/": ("dashboard.html", "text/html; charset=utf-8"),
+    "/styles.css": ("styles.css", "text/css; charset=utf-8"),
+    "/app.js": ("app.js", "text/javascript; charset=utf-8"),
+}
 FORECAST_CACHE = {}
 FORECAST_CACHE_LOCK = Lock()
 LOCATIONS = {
@@ -50,10 +56,28 @@ def forecast_url(location):
         "longitude": location["longitude"],
         "hourly": "temperature_2m,wind_speed_10m",
         "wind_speed_unit": "mph",
-        "forecast_days": 8,
+        "forecast_days": OPEN_METEO_FORECAST_DAYS,
         "timezone": "auto",
     }
     return f"https://api.open-meteo.com/v1/forecast?{urlencode(parameters)}"
+
+
+def validate_forecast(forecast):
+    if not isinstance(forecast, dict):
+        raise ValueError("Forecast response must be a JSON object")
+    hourly = forecast.get("hourly")
+    if not isinstance(hourly, dict):
+        raise ValueError("Forecast response is missing hourly data")
+    series = (
+        hourly.get("time"),
+        hourly.get("temperature_2m"),
+        hourly.get("wind_speed_10m"),
+    )
+    if not all(isinstance(values, list) for values in series):
+        raise ValueError("Forecast response is missing hourly temperature or wind data")
+    if len({len(values) for values in series}) != 1:
+        raise ValueError("Forecast response has mismatched hourly data")
+    return forecast
 
 
 def get_forecast(location_key, location):
@@ -67,20 +91,8 @@ def get_forecast(location_key, location):
         forecast_url(location),
         headers={"User-Agent": "AntarcticWeatherDashboard/1.0"},
     )
-    with urllib.request.urlopen(request, timeout=20) as response:
-        forecast = json.loads(response.read())
-    if not isinstance(forecast, dict):
-        raise ValueError("Forecast response must be a JSON object")
-    hourly = forecast.get("hourly")
-    if not isinstance(hourly, dict):
-        raise ValueError("Forecast response is missing hourly data")
-    times = hourly.get("time")
-    temperatures = hourly.get("temperature_2m")
-    wind_speeds = hourly.get("wind_speed_10m")
-    if not all(isinstance(values, list) for values in (times, temperatures, wind_speeds)):
-        raise ValueError("Forecast response is missing hourly temperature or wind data")
-    if len(times) != len(temperatures) or len(times) != len(wind_speeds):
-        raise ValueError("Forecast response has mismatched hourly data")
+    with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
+        forecast = validate_forecast(json.loads(response.read()))
 
     forecast["location"] = {
         "name": location["name"],
@@ -107,31 +119,31 @@ def get_locations():
 class WeatherHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         request = urlsplit(self.path)
-        if request.path == "/":
-            self.send_file()
+        if request.path in STATIC_FILES:
+            self.send_static_file(*STATIC_FILES[request.path])
         elif request.path == "/api/locations":
-            self.send_locations()
+            self.send_json(get_locations())
         elif request.path == "/api/forecast":
             self.send_forecast(request.query)
         else:
             self.send_error(404)
 
-    def send_file(self):
+    def send_static_file(self, filename, content_type):
         try:
-            content = PAGE.read_bytes()
+            content = (ROOT / filename).read_bytes()
         except OSError as error:
-            self.send_error(500, f"Could not read dashboard: {error}")
+            self.send_error(500, f"Could not read {filename}: {error}")
             return
-        self.send_response(200)
-        self.send_header("Content-Type", "text/html; charset=utf-8")
-        self.send_header("Content-Length", str(len(content)))
-        self.end_headers()
-        self.wfile.write(content)
 
-    def send_locations(self):
-        content = json.dumps(get_locations()).encode("utf-8")
+        self.send_content(content, content_type)
+
+    def send_json(self, data):
+        content = json.dumps(data).encode("utf-8")
+        self.send_content(content, "application/json; charset=utf-8")
+
+    def send_content(self, content, content_type):
         self.send_response(200)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(content)))
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
@@ -151,12 +163,7 @@ class WeatherHandler(BaseHTTPRequestHandler):
             self.send_error(502, f"Weather forecast is unavailable: {error}")
             return
 
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(content)))
-        self.send_header("Cache-Control", "no-store")
-        self.end_headers()
-        self.wfile.write(content)
+        self.send_content(content, "application/json; charset=utf-8")
 
     # noinspection PyShadowingBuiltins
     def log_message(self, format, *args):
@@ -164,8 +171,14 @@ class WeatherHandler(BaseHTTPRequestHandler):
 
 
 def main():
-    if not PAGE.is_file():
-        raise FileNotFoundError(f"Dashboard page not found: {PAGE}")
+    missing_files = [
+        filename for filename, _ in STATIC_FILES.values()
+        if not (ROOT / filename).is_file()
+    ]
+    if missing_files:
+        raise FileNotFoundError(
+            f"Dashboard assets not found: {', '.join(missing_files)}"
+        )
     server = ThreadingHTTPServer((HOST, PORT), WeatherHandler)
     url = f"http://{HOST}:{PORT}/"
     print(f"Antarctic Weather is available at {url}")
