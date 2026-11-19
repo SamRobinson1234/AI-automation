@@ -12,34 +12,54 @@ from pathlib import Path
 API_URL = "https://api.tvmaze.com/schedule"
 COUNTRY_CODE = "GB"
 REQUEST_TIMEOUT_SECONDS = 20
+USER_AGENT = "TVMazeScheduleSummary/1.0"
+SOURCE_URL = "https://www.tvmaze.com/"
+OUTPUT_FILENAME = "schedule.json"
 
 
 def default_output_path():
     for variable in ("OneDriveCommercial", "OneDriveConsumer", "OneDrive"):
         sync_root = os.environ.get(variable)
         if sync_root:
-            return Path(sync_root) / "Documents" / "TVMaze" / "schedule.json"
+            return Path(sync_root) / "Documents" / "TVMaze" / OUTPUT_FILENAME
     raise OSError(
         "OneDrive sync folder was not found. Set the OneDrive environment variable "
         "or pass --output with the synced folder path."
     )
 
 
-def fetch_schedule(schedule_date):
-    query = urllib.parse.urlencode({
+def schedule_url(schedule_date):
+    parameters = urllib.parse.urlencode({
         "country": COUNTRY_CODE,
         "date": schedule_date.isoformat(),
     })
-    request = urllib.request.Request(
-        f"{API_URL}?{query}",
-        headers={"User-Agent": "TVMazeScheduleSummary/1.0"},
-    )
+    return f"{API_URL}?{parameters}"
+
+
+def fetch_schedule(schedule_date):
+    request = urllib.request.Request(schedule_url(schedule_date), headers={
+        "User-Agent": USER_AGENT,
+    })
     with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
         schedule = json.loads(response.read())
 
     if not isinstance(schedule, list):
         raise ValueError("TVMaze returned an unexpected schedule format")
     return schedule
+
+
+def show_rating(show):
+    rating = show.get("rating") or {}
+    if not isinstance(rating, dict):
+        raise ValueError("TVMaze returned an invalid show rating")
+    return rating.get("average")
+
+
+def show_genres(show):
+    genres = show.get("genres") or []
+    if not isinstance(genres, list) or not all(isinstance(genre, str) for genre in genres):
+        raise ValueError("TVMaze returned invalid show genres")
+    return genres
 
 
 def summarize_shows(schedule):
@@ -54,17 +74,17 @@ def summarize_shows(schedule):
         if show_id is None or not isinstance(name, str):
             raise ValueError("TVMaze returned a show without an ID or name")
 
-        summary = shows.setdefault(show_id, {
-            "name": name,
-            "genres": show.get("genres") or [],
-            "rating": (show.get("rating") or {}).get("average"),
-            "airings": [],
-        })
+        summary = shows.get(show_id)
+        if summary is None:
+            summary = {
+                "name": name,
+                "genres": show_genres(show),
+                "rating": show_rating(show),
+                "airings": [],
+            }
+            shows[show_id] = summary
         summary["airings"].append({
             "time": episode.get("airtime"),
-            "name": episode.get("name"),
-            "season": episode.get("season"),
-            "number": episode.get("number"),
         })
 
     return sorted(
@@ -74,6 +94,26 @@ def summarize_shows(schedule):
             show["name"].casefold(),
         ),
     )
+
+
+def build_output(schedule_date, schedule):
+    shows = summarize_shows(schedule)
+    return {
+        "date": schedule_date.isoformat(),
+        "country": COUNTRY_CODE,
+        "shows": [
+            {
+                "name": show["name"],
+                "airing_times": sorted({
+                    airing["time"] for airing in show["airings"] if airing["time"]
+                }),
+                "genres": show["genres"],
+                "rating": show["rating"],
+            }
+            for show in shows
+        ],
+        "source": SOURCE_URL,
+    }
 
 
 def parse_args(arguments=None):
@@ -88,34 +128,26 @@ def parse_args(arguments=None):
     return parser.parse_args(arguments)
 
 
+def write_json(output_path, data):
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
 def main(arguments=None):
     args = parse_args(arguments)
     schedule_date = date.today() + timedelta(days=1)
     try:
-        summaries = summarize_shows(fetch_schedule(schedule_date))
+        output = build_output(schedule_date, fetch_schedule(schedule_date))
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, ValueError) as error:
         print(f"Could not load the TVMaze schedule: {error}", file=sys.stderr)
         return 1
 
-    shows = [{
-        "name": show["name"],
-        "airing_times": sorted({
-            airing["time"] for airing in show["airings"] if airing["time"]
-        }),
-        "genres": show["genres"],
-        "rating": show["rating"],
-    } for show in summaries]
-    output = {
-        "date": schedule_date.isoformat(),
-        "country": COUNTRY_CODE,
-        "shows": shows,
-        "source": "https://www.tvmaze.com/",
-    }
-    serialized_output = json.dumps(output, ensure_ascii=False, indent=2) + "\n"
     try:
         output_path = args.output or default_output_path()
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(serialized_output, encoding="utf-8")
+        write_json(output_path, output)
     except OSError as error:
         print(f"Could not save the schedule JSON: {error}", file=sys.stderr)
         return 1
