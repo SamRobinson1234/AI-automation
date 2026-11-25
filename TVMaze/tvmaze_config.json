@@ -5,6 +5,6 @@
     "rating": true,
     "premiere_date": true
   },
-  "genre_filter": [],
+  "genre_filter": ["Comedy"],
   "minimum_rating": 8
 }

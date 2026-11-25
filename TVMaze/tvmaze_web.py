@@ -11,9 +11,10 @@ from urllib.parse import parse_qs, urlsplit
 from tvmaze import (
     AppSettings,
     ShowDetails,
+    ShowSearchResult,
     TVMazeConfig,
     configure_logging,
-    find_show,
+    find_show_with_status,
     load_config,
     load_settings,
 )
@@ -84,7 +85,7 @@ class TVMazeHandler(BaseHTTPRequestHandler):
             return
 
         try:
-            config, show = self.lookup(show_name, settings)
+            config, search_result = self.lookup(show_name, settings)
         except (
             OSError,
             json.JSONDecodeError,
@@ -105,7 +106,25 @@ class TVMazeHandler(BaseHTTPRequestHandler):
             )
             return
 
-        if show is None:
+        if search_result.show is None:
+            if search_result.below_minimum_rating:
+                logging.getLogger("tvmaze_app").info(
+                    "Web search for %r failed the minimum rating filter (rating %s)",
+                    show_name,
+                    (
+                        search_result.rating
+                        if search_result.rating is not None
+                        else "Not rated"
+                    ),
+                )
+                self.send_page(
+                    message=(
+                        "This show doesn't meet the minimum rating. "
+                        "Please enter a better-rated show."
+                    ),
+                    query=show_name,
+                )
+                return
             logging.getLogger("tvmaze_app").info(
                 "Web search returned no show matching configured filters for %r",
                 show_name,
@@ -119,11 +138,16 @@ class TVMazeHandler(BaseHTTPRequestHandler):
             )
             return
         logging.getLogger("tvmaze_app").info(
-            "Web search succeeded for %r (matched %r)",
+            "Web search succeeded for %r (matched %r, rating %s)",
             show_name,
-            show.name,
+            search_result.show.name,
+            (
+                search_result.show.rating
+                if search_result.show.rating is not None
+                else "Not rated"
+            ),
         )
-        self.send_page(query=show_name, show=show, config=config)
+        self.send_page(query=show_name, show=search_result.show, config=config)
 
     def send_page(
         self,
@@ -187,15 +211,19 @@ class TVMazeHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(content)
 
-    def lookup(self, show_name: str, settings: AppSettings) -> tuple[TVMazeConfig, ShowDetails | None]:
+    def lookup(
+        self,
+        show_name: str,
+        settings: AppSettings,
+    ) -> tuple[TVMazeConfig, ShowSearchResult]:
         config = load_config(settings)
-        show = find_show(
+        search_result = find_show_with_status(
             show_name,
             config.genre_filter,
             config.minimum_rating,
             settings,
         )
-        return config, show
+        return config, search_result
 
     def search_json(self, query: str, settings: AppSettings) -> None:
         show_name = parse_qs(query).get("q", [""])[0].strip()
@@ -207,7 +235,7 @@ class TVMazeHandler(BaseHTTPRequestHandler):
             return
 
         try:
-            config, show = self.lookup(show_name, settings)
+            config, search_result = self.lookup(show_name, settings)
         except (
             OSError,
             json.JSONDecodeError,
@@ -226,15 +254,21 @@ class TVMazeHandler(BaseHTTPRequestHandler):
             )
             return
 
-        if show is None:
+        if search_result.show is None:
             self.send_json(200, {
                 "show": None,
                 "message": (
-                    "No matching show found with the configured filters "
-                    f"(rating above {config.minimum_rating:g})."
+                    "This show doesn't meet the minimum rating. "
+                    "Please enter a better-rated show."
+                    if search_result.below_minimum_rating
+                    else (
+                        "No matching show found with the configured filters "
+                        f"(rating above {config.minimum_rating:g})."
+                    )
                 ),
             })
             return
+        show = search_result.show
 
         values: dict[str, str | float] = {
             "title": show.name,

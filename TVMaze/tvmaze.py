@@ -69,6 +69,13 @@ class ShowDetails:
 
 
 @dataclass(frozen=True)
+class ShowSearchResult:
+    show: ShowDetails | None
+    below_minimum_rating: bool
+    rating: float | None = None
+
+
+@dataclass(frozen=True)
 class TVMazeConfig:
     display: Mapping[str, bool]
     genre_filter: tuple[str, ...]
@@ -238,6 +245,20 @@ def find_show(
     minimum_rating: float | None = None,
     settings: AppSettings | None = None,
 ) -> ShowDetails | None:
+    return find_show_with_status(
+        show_name,
+        genre_filter,
+        minimum_rating,
+        settings,
+    ).show
+
+
+def find_show_with_status(
+    show_name: str,
+    genre_filter: Sequence[str] = (),
+    minimum_rating: float | None = None,
+    settings: AppSettings | None = None,
+) -> ShowSearchResult:
     app_settings = settings or load_settings()
     request = urllib.request.Request(
         search_url(show_name, app_settings),
@@ -252,6 +273,8 @@ def find_show(
         raise ValueError("TVMaze returned an unexpected search format")
 
     required_genres = {genre.casefold() for genre in genre_filter}
+    below_minimum_rating = False
+    rejected_rating: float | None = None
     for result in raw_results:
         result_object = _require_mapping(result, "TVMaze search result")
         show = _require_mapping(result_object.get("show"), "TVMaze show")
@@ -280,18 +303,24 @@ def find_show(
         if minimum_rating is not None and (
             average_rating is None or average_rating <= minimum_rating
         ):
+            below_minimum_rating = True
+            rejected_rating = average_rating
             continue
 
         raw_premiered = show.get("premiered")
         if raw_premiered is not None and not isinstance(raw_premiered, str):
             raise ValueError("TVMaze returned an invalid premiere date")
-        return ShowDetails(
-            name=name,
+        return ShowSearchResult(
+            show=ShowDetails(
+                name=name,
+                rating=average_rating,
+                genres=tuple(genres),
+                premiered=raw_premiered,
+            ),
+            below_minimum_rating=False,
             rating=average_rating,
-            genres=tuple(genres),
-            premiered=raw_premiered,
         )
-    return None
+    return ShowSearchResult(None, below_minimum_rating, rejected_rating)
 
 
 def main() -> int:
@@ -314,7 +343,7 @@ def main() -> int:
         return 1
 
     try:
-        show = find_show(
+        result = find_show_with_status(
             show_name,
             config.genre_filter,
             config.minimum_rating,
@@ -325,15 +354,32 @@ def main() -> int:
         print(f"Could not retrieve the TV show: {error}", file=sys.stderr)
         return 1
 
-    if show is None:
-        logger.info("Terminal search returned no show matching configured filters")
+    if result.show is None:
+        if result.below_minimum_rating:
+            logger.info(
+                "Search for %r failed the minimum rating filter (rating %s)",
+                show_name,
+                result.rating if result.rating is not None else "Not rated",
+            )
+            print(
+                "This show doesn't meet the minimum rating. "
+                "Please enter a better-rated show."
+            )
+            return 1
+        logger.info("No show found matching configured filters for %r", show_name)
         print(
             f"No TV show found for {show_name!r} matching the configured filters "
             f"(rating above {config.minimum_rating:g})."
         )
         return 1
 
-    logger.info("Terminal search succeeded for show %r", show.name)
+    show = result.show
+    logger.info(
+        "Terminal search succeeded for %r (matched %r, rating %s)",
+        show_name,
+        show.name,
+        show.rating if show.rating is not None else "Not rated",
+    )
     print(f"\n{settings.report_heading}")
     values = {
         "title": show.name,
