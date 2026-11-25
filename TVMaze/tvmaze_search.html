@@ -158,86 +158,21 @@
     <h1>Find a TV show</h1>
     <p class="intro">Search for a show to see its rating, genres, and premiere date.</p>
 
-    <form class="search-panel" id="search-form">
+    <form class="search-panel" method="post" action="__SEARCH_ROUTE__">
       <label for="show-name">TV show name</label>
       <div class="search-row">
-        <input id="show-name" name="q" type="search" placeholder="e.g. The Office" required maxlength="200" autocomplete="off">
+        <input id="show-name" name="q" type="search" placeholder="e.g. The Office" required maxlength="__MAX_SEARCH_NAME_LENGTH__" autocomplete="off" value="__QUERY__">
         <button id="search-button" type="submit">Search</button>
       </div>
     </form>
 
-    <p class="status" id="status" role="status" aria-live="polite"></p>
+    <p class="status __STATUS_CLASS__" id="status" role="status" aria-live="polite">__STATUS__</p>
 
-    <section class="result" id="result" aria-labelledby="result-heading" hidden>
+    <section class="result" id="result" aria-labelledby="result-heading" __RESULT_HIDDEN__>
       <h2 id="result-heading">Show details</h2>
-      <dl id="details"></dl>
-      <p class="source" id="source"></p>
+      <dl id="details">__DETAILS__</dl>
+      <p class="source" id="source">__SOURCE__</p>
     </section>
   </main>
-  <script>
-    const form = document.querySelector("#search-form");
-    const input = document.querySelector("#show-name");
-    const button = document.querySelector("#search-button");
-    const status = document.querySelector("#status");
-    const result = document.querySelector("#result");
-    const details = document.querySelector("#details");
-    const source = document.querySelector("#source");
-    const labels = {
-      title: "Title",
-      genre: "Genres",
-      rating: "Rating",
-      premiere_date: "Premiere date",
-    };
-
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const showName = input.value.trim();
-      if (!showName) {
-        input.focus();
-        return;
-      }
-
-      button.disabled = true;
-      status.className = "status";
-      status.textContent = "Searching TVMaze…";
-      result.hidden = true;
-      details.replaceChildren();
-      source.replaceChildren();
-
-      try {
-        const response = await fetch(`/api/search?q=${encodeURIComponent(showName)}`);
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.error || "The search failed. Please try again.");
-        }
-        if (!data.show) {
-          status.textContent = data.message;
-          return;
-        }
-
-        for (const [field, value] of Object.entries(data.show)) {
-          const term = document.createElement("dt");
-          term.textContent = labels[field] || field;
-          const description = document.createElement("dd");
-          description.textContent = String(value);
-          details.append(term, description);
-        }
-
-        const link = document.createElement("a");
-        link.href = data.source;
-        link.textContent = "TVMaze";
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        source.append("Source: ", link);
-        result.hidden = false;
-        status.textContent = "";
-      } catch (error) {
-        status.className = "status error";
-        status.textContent = error.message || "Could not complete the search.";
-      } finally {
-        button.disabled = false;
-      }
-    });
-  </script>
 </body>
 </html>

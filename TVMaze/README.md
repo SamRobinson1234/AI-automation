@@ -8,9 +8,12 @@ Run `python tvmaze.py` in this directory and enter a show name when prompted. Th
 
 Edit `tvmaze_config.json` to control the report without changing the script. Set `display.title`, `display.genre`, `display.rating`, or `display.premiere_date` to `true` or `false` to show or hide each field. Set `genre_filter` to an empty list to accept any genre, or add one or more genre names (for example, `["Drama"]`) to select results matching any of those genres. Genre matching ignores capitalization. Set `minimum_rating` to a number from 0 to 10 to only return shows rated strictly above that number; with the default of `8`, unrated shows and shows rated exactly 8 are excluded.
 
+Application defaults such as API endpoints, request timeouts, user-agent strings, web-server settings, schedule output location, and report labels are in `app_settings.json`.
+Application startup, search, schedule, and error events are recorded in the `runlog` file in this folder.
+
 ## Search from a webpage
 
-Run `python tvmaze_web.py` in this directory. It starts the search page at `http://127.0.0.1:8765/` and opens it in your browser. Enter a show name and select **Search** to view the information returned by TVMaze. The existing display and genre settings in `tvmaze_config.json` apply to web searches too. Keep the terminal window open while using the page; press Ctrl+C in that window to stop the local server. Python and an internet connection are required.
+Run `python tvmaze_web.py` in this directory. It starts the search page at `http://127.0.0.1:8765/` and opens it in your browser. Enter a show name and select **Search** to view the information returned by TVMaze. The search form and result rendering run on the Python server; the page does not need JavaScript. The existing display and genre settings in `tvmaze_config.json` apply to web searches too. Keep the terminal window open while using the page; press Ctrl+C in that window to stop the local server. Python and an internet connection are required.
 
 ## Run
 
@@ -27,3 +30,9 @@ The output location is based on the `OneDriveCommercial`, `OneDriveConsumer`, or
 3. Add **Get file content** using the file identifier from the trigger, then **Parse JSON** using that content. The top-level properties are `date`, `country`, `shows`, and `source`; each show has `name`, `airing_times`, `genres`, and `rating`.
 
 The Windows task runs the Python script; OneDrive sync carries the file to the cloud, where the flow triggers. Choose a run time that leaves enough time for OneDrive to sync before the flow needs the file. The schedule date is tomorrow relative to the computer's local date.
+
+## Development checks
+
+Open the `TVMaze` folder in VS Code to apply Pylance strict type checking. Run `python -m unittest discover -s tests -v` and `python -m mypy` before committing. Install the type checker with `python -m pip install -r requirements-dev.txt`. The GitHub Actions workflow runs both checks for changes in this folder.
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for the application flow, configuration guide, and steps for adapting the app to another TV guide provider.
