@@ -1,0 +1,10 @@
+{
+  "display": {
+    "title": true,
+    "genre": true,
+    "rating": true,
+    "premiere_date": true
+  },
+  "genre_filter": [],
+  "minimum_rating": 8
+}
