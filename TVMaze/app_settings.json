@@ -1,0 +1,45 @@
+{
+  "api": {
+    "search_url": "https://api.tvmaze.com/search/shows",
+    "schedule_url": "https://api.tvmaze.com/schedule",
+    "request_timeout_seconds": 20,
+    "search_user_agent": "TVMazeShowLookup/1.0",
+    "schedule_user_agent": "TVMazeScheduleSummary/1.0",
+    "source_url": "https://www.tvmaze.com/"
+  },
+  "web": {
+    "host": "127.0.0.1",
+    "port": 8765,
+    "page_filename": "tvmaze_search.html",
+    "root_route": "/",
+    "search_route": "/api/search",
+    "html_content_type": "text/html; charset=utf-8",
+    "json_content_type": "application/json; charset=utf-8",
+    "cache_control": "no-store",
+    "max_search_name_length": 200,
+    "max_request_body_bytes": 4096
+  },
+  "schedule": {
+    "country_code": "GB",
+    "one_drive_environment_variables": [
+      "OneDriveCommercial",
+      "OneDriveConsumer",
+      "OneDrive"
+    ],
+    "documents_folder": "Documents",
+    "output_folder": "TVMaze",
+    "output_filename": "schedule.json",
+    "date_offset_days": 1
+  },
+  "report_heading": "TVMaze show report",
+  "log_filename": "runlog",
+  "log_level": "INFO",
+  "log_format": "%(asctime)s %(levelname)s %(name)s: %(message)s",
+  "display_labels": {
+    "title": "Title",
+    "genre": "Genres",
+    "rating": "Rating",
+    "premiere_date": "Premiere date"
+  },
+  "user_config_filename": "tvmaze_config.json"
+}
