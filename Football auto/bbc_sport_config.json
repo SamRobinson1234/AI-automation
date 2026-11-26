@@ -1,0 +1,14 @@
+{
+  "scores_fixtures_url_template": "https://www.bbc.co.uk/sport/football/{league_slug}/scores-fixtures/{year:04d}-{month:02d}?filter=results",
+  "league_slug": "premier-league",
+  "max_months_to_search": 12,
+  "report_lookback_days": 7,
+  "request_timeout_seconds": 90,
+  "fetch_attempts": 3,
+  "retry_delay_seconds": 5,
+  "user_agent": "AI-automation BBC football results and team xG report",
+  "output_directory": "%OneDrive%\\Documents\\Football auto",
+  "output_file_prefix": "league_results",
+  "xg_section_label": "advanced-match-stats-expected",
+  "xg_stat_label": "xG"
+}

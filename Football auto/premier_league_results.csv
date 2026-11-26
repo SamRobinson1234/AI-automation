@@ -1,0 +1,11 @@
+match_date,home_team,home_score,home_xg,away_team,away_score,away_xg,bbc_url
+2026-11-23,Brentford,4,2.7673,Everton,0,0.235,https://www.bbc.co.uk/sport/football/live/c64gnwyv7kvjt
+2026-11-22,Hull City,2,1.8506,Brighton & Hove Albion,0,2.2382,https://www.bbc.co.uk/sport/football/live/cky97ll8253wt
+2026-11-22,Liverpool,4,4.3777,Manchester United,0,0.6309,https://www.bbc.co.uk/sport/football/live/cm62pqqw6d29t
+2026-11-21,Manchester City,1,1.8764,Fulham,1,0.7248,https://www.bbc.co.uk/sport/football/live/c3kgdxnggq7pt
+2026-11-21,Aston Villa,0,0.9849,Sunderland,0,0.2647,https://www.bbc.co.uk/sport/football/live/ck7v2e0vvpzdt
+2026-11-21,Bournemouth,2,2.8745,Nottingham Forest,0,2.0708,https://www.bbc.co.uk/sport/football/live/cr5y18vyynlxt
+2026-11-21,Chelsea,1,0.5565,Leeds United,4,2.5094,https://www.bbc.co.uk/sport/football/live/c3dx19jxx15zt
+2026-11-21,Coventry City,3,1.9643,Crystal Palace,2,1.9051,https://www.bbc.co.uk/sport/football/live/c6pw42nwwgvjt
+2026-11-21,Tottenham Hotspur,2,2.6879,Ipswich Town,0,0.3822,https://www.bbc.co.uk/sport/football/live/c699exk99z54t
+2026-11-21,Newcastle United,2,1.7261,Arsenal,2,1.4845,https://www.bbc.co.uk/sport/football/live/cqd01ey009rxt
